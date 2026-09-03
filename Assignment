@@ -1,0 +1,36 @@
+# Missing values and duplicates
+colSums(is.na(raw))
+sum(duplicated(raw))
+clean <- raw %>% distinct()
+
+# Median imputation
+clean$Monthly_KWh[is.na(clean$Monthly_KWh)] <-
+  median(clean$Monthly_KWh, na.rm=TRUE)
+# Classification
+idx <- createDataPartition(clean$High_Energy_Next_Cycle,
+                            p=.80, list=FALSE)
+train <- clean[idx,]
+test <- clean[-idx,]
+
+rf_model <- randomForest(formula, data=train,
+                         ntree=200, mtry=3, importance=TRUE)
+rf_pred <- predict(rf_model, test)
+rf_cm <- confusionMatrix(rf_pred,
+                         test$High_Energy_Next_Cycle,
+                         positive="Yes")
+# K-Means
+cluster_data <- clean %>%
+  select(Monthly_KWh, Energy_Intensity_KWh_m2,
+         Solar_Generation_KWh, EV_Charging_KWh,
+         Waste_KG, Recycling_Rate_pct, Traffic_Index)
+
+scaled_data <- scale(cluster_data)
+km <- kmeans(scaled_data, centers=3, nstart=25)
+# Apriori
+trans <- as(activity, "transactions")
+rules <- apriori(trans,
+                 parameter=list(supp=.10,
+                                conf=.60,
+                                minlen=2))
+inspect(head(sort(rules, by="lift",
+                  decreasing=TRUE),10))
